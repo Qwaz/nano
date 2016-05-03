@@ -1,0 +1,37 @@
+## Class Design
+- Network
+    - input_layer_name : str
+    - output_layer_name : str
+    - !add_layer(name : str, layer : Layer) : void
+    - !add_connection(
+        before : str, after : str, connection : Connection
+        )
+    - !calculate(input_data)
+- Layer
+    - activation
+    - error
+    - LinearLayer
+        - num_neurons : int
+    - DimensionalLayer
+        - width : int
+        - height : int
+        - depth : int
+- Connection
+    - !forward()
+    - !backward()
+    - LinearToLinear
+        - FullyConnected
+    - DimensionalToLinear
+        - Projection
+    - DimensionalToDimensional
+        - Convolution
+        - MaxPooling
+    - Activation
+        - Linear
+        - sigmoid
+        - tanh
+        - ReLU
+- Trainer
+    - !train(network : Network, ...)
+    - SGD
+    - MomentumSGD
