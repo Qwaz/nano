@@ -99,5 +99,5 @@ class SGDMomentum(EpochBasedTrainer):
             for i in range(len(connection.weight)):
                 current_speed = learning_rate * connection.dweight[i] + momentum_rate * connection.train_momentum[i]
                 connection.weight[i] += current_speed
-                connection.train_momentum[i] = current_speed
+                connection.train_momentum[i][:] = current_speed
         return train_connection

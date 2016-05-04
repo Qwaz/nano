@@ -84,7 +84,7 @@ class Network:
             layer.result.fill(0)
 
         # run neural net
-        np.copyto(self.layers[self.input_layer_name].result, input_data)
+        self.layers[self.input_layer_name].result[:] = input_data
         for layer in self.topologic_order:
             for connection in layer.connections:
                 connection.forward()
@@ -105,11 +105,8 @@ class Network:
             layer.error.fill(0)
 
         # run neural net
-        np.copyto(self.layers[self.output_layer_name].error, error_data)
+        self.layers[self.output_layer_name].error[:] = error_data
         for layer in reversed(self.topologic_order):
             for connection in layer.connections:
                 connection.backward()
                 train_func(connection)
-            ''''print(layer.error)
-            print(layer.result)
-            input()'''

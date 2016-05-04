@@ -33,10 +33,8 @@ class FullyConnected(LinearToLinear):
 
     def backward(self):
         dw = np.repeat(self.before_layer.result.T, self.after_layer.shape[1], axis=1)
-        dw = np.multiply(dw, self.after_layer.error)
-        np.copyto(self.dweight[0], dw)
-        np.copyto(self.dweight[1], self.after_layer.error)
+        self.dweight[0][:] = np.multiply(dw, self.after_layer.error)
+        self.dweight[1][:] = self.after_layer.error
 
         de = np.multiply(self.weight[0], self.after_layer.error)
-        de = np.sum(de, axis=1)
-        np.copyto(self.before_layer.error, de.T)
+        self.before_layer.error[:] = np.sum(de, axis=1).T
