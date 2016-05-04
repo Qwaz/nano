@@ -16,13 +16,13 @@ mlp.add_layer('hidden1', LinearLayer(50))
 mlp.add_layer('hidden1_a', LinearLayer(50))
 
 mlp.add_connection('input', 'hidden1', FullyConnected())
-mlp.add_connection('hidden1', 'hidden1_a', Sigmoid())
+mlp.add_connection('hidden1', 'hidden1_a', ReLU())
 
 mlp.add_layer('hidden2', LinearLayer(30))
 mlp.add_layer('hidden2_a', LinearLayer(30))
 
 mlp.add_connection('hidden1_a', 'hidden2', FullyConnected())
-mlp.add_connection('hidden2', 'hidden2_a', Sigmoid())
+mlp.add_connection('hidden2', 'hidden2_a', ReLU())
 
 mlp.add_layer('output', LinearLayer(1))
 mlp.add_layer('output_a', LinearLayer(1))
@@ -59,5 +59,5 @@ def log_result(current_epoch, network):
     validation_error = nano.trainer.rms(network, validation_set)
     print('EPOCH: %d - train error %g / validation error %g' % (current_epoch, train_error, validation_error))
 
-sgd = nano.trainer.SGD(mlp)
-sgd.train(train_set, epoch=1000, learning_rate=0.002, epoch_func=log_result)
+momentum = nano.trainer.SGDMomentum(mlp)
+momentum.train(train_set, epoch=10000, momentum_rate=0.9, learning_rate=0.01, epoch_func=log_result)

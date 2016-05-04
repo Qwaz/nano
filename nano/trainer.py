@@ -79,5 +79,25 @@ class SGD(EpochBasedTrainer):
         def train_connection(connection):
             for i in range(len(connection.weight)):
                 connection.weight[i] += learning_rate * connection.dweight[i]
-            pass
+        return train_connection
+
+class SGDMomentum(EpochBasedTrainer):
+    def init_func(self, **kwargs):
+        def init_connection(connection):
+            connection.train_momentum = []
+            for weight in connection.weight:
+                connection.train_momentum.append(np.zeros(weight.shape))
+        return init_connection
+
+    '''
+    [required]
+    momentum_rate
+    learning_rate
+    '''
+    def train_func(self, *, momentum_rate, learning_rate, **kwargs):
+        def train_connection(connection):
+            for i in range(len(connection.weight)):
+                current_speed = learning_rate * connection.dweight[i] + momentum_rate * connection.train_momentum[i]
+                connection.weight[i] += current_speed
+                connection.train_momentum[i] = current_speed
         return train_connection
