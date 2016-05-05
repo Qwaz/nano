@@ -1,7 +1,7 @@
 # nano
 Easy to learn Python 3 neural network
 
-## Requirement
+## Requirements
 - Python 3 (tested with 3.5)
 - [numpy](http://www.numpy.org/)
 

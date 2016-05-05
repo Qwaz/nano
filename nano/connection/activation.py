@@ -42,3 +42,10 @@ class Sigmoid(AbsActivation):
 
     fx = np.vectorize(lambda x: 1 / (1 + math.exp(-x)))
     dfdx = np.vectorize(lambda x: (1 / (1 + math.exp(-x))) * (1 - 1 / (1 + math.exp(-x))))
+
+class Tansig(AbsActivation):
+    def __init__(self):
+        super().__init__()
+
+    fx = np.vectorize(lambda x: math.tanh(x))
+    dfdx = np.vectorize(lambda x: 1 - (math.tanh(x) ** 2))

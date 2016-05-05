@@ -19,8 +19,8 @@ class LinearLayer(Layer):
         self.error = np.zeros(self.shape, dtype=np.double)
 
 class DimensionalLayer(Layer):
-    def __init__(self, width, height, depth):
+    def __init__(self, depth, height, width): # changed order
         Layer.__init__(self)
-        self.shape = (height, width, depth)
+        self.shape = (depth, height, width)
         self.result = np.zeros(self.shape, dtype=np.double)
         self.error = np.zeros(self.shape, dtype=np.double)
