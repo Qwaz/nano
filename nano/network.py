@@ -95,13 +95,13 @@ class Network:
         self.fix()
 
         # initialize result
-        for name, layer in self.layers.items():
+        for layer in self.layers.values():
             for connection in layer.connections:
                 init_func(connection)
 
     def learn_error(self, error_data, train_func):
         # back propagation
-        for name, layer in self.layers.items():
+        for layer in self.layers.values():
             layer.error.fill(0)
 
         # run neural net
@@ -110,3 +110,23 @@ class Network:
             for connection in layer.connections:
                 connection.backward()
                 train_func(connection)
+
+    def save_weight(self, file_name):
+        weights = []
+        for name, layer in sorted(self.layers.items()):
+            for connection in layer.connections:
+                for weight in connection.weight:
+                    weights.append(weight)
+        np.savez_compressed(file_name, *weights)
+
+    def load_weight(self, file_name):
+        data = np.load(file_name)
+        weights = sorted(list(data.items()))
+
+        c = 0
+        for name, layer in sorted(self.layers.items()):
+            for connection in layer.connections:
+                for weight in connection.weight:
+                    weight[:] = weights[c][1]
+                    c += 1
+        data.close()

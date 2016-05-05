@@ -59,5 +59,13 @@ def log_result(current_epoch, network):
     validation_error = nano.trainer.rms(network, validation_set)
     print('EPOCH: %d - train error %g / validation error %g' % (current_epoch, train_error, validation_error))
 
+try:
+    mlp.load_weight('trained.npz')
+except Exception as e:
+    print(e)
+    print('load failed')
+
 momentum = nano.trainer.SGDMomentum(mlp)
-momentum.train(train_set, epoch=10000, momentum_rate=0.9, learning_rate=0.01, epoch_func=log_result)
+momentum.train(train_set, epoch=1000, momentum_rate=0.9, learning_rate=0.01, epoch_func=log_result)
+
+mlp.save_weight('trained.npz')
