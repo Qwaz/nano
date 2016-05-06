@@ -30,7 +30,7 @@ convnet.add_connection('mlp_ina', 'output', FullyConnected())
 convnet.add_connection('output', 'output_a', Linear())
 
 # change this line to your data path
-tset = open('cifar-10-batches-py/data_batch_1', 'rb')
+tset = open('/Users/Admin/Documents/Workspace/postech/CITE505/HW2/nn-assign2/cifar10/data_batch_1', 'rb')
 rawdata = pickle.load(tset, encoding='bytes')
 
 train_set = []
@@ -51,11 +51,10 @@ for i in range(0, 300):
 	train_set.append((img, ansvec))
 
 tset.close()
-
+print('loaded')
 def log_result(current_epoch, network):
     train_error = nano.trainer.rms(network, train_set)
     print('EPOCH: %d - train error %g' % (current_epoch, train_error))
 
 sgd = nano.trainer.SGD(convnet)
-
 sgd.train(train_set, epoch=100, learning_rate=0.001, epoch_func=log_result)
