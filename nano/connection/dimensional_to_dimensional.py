@@ -15,143 +15,171 @@ class DimensionalToDimensional(AbsConnection, metaclass=ABCMeta):
         return isinstance(before_layer, DimensionalLayer) and isinstance(after_layer, DimensionalLayer)
 
 class Convolution(DimensionalToDimensional):
-    def __init__(self, height, width, padding=0, stride=1):
+    def __init__(self, height, width, padding=0):
         super().__init__()
-        self.stride = stride
         self.height = height
         self.width = width
         self.padding = padding
+        self.stride = 1 # currently nano only supports stride=1
 
     def check_shape(self, before_shape, after_shape):
-        if self.padding > self.height - 1 or self.padding > self.width - 1:
+        pad_height = before_shape[1] + 2 * self.padding
+        pad_width = before_shape[2] + 2 * self.padding
+
+        # check minimum size
+        if pad_width < self.width or pad_height < self.height:
             return False
-        elif ((before_shape[1] + 2 * self.padding - self.height) // self.stride + 1 == after_shape[1]
-            and (before_shape[2] + 2 * self.padding - self.width) // self.stride + 1 == after_shape[2]):
-            return True
-        else:
+
+        # check exact fit
+        if (pad_height - self.height) % self.stride != 0 or (pad_width - self.width) % self.stride != 0:
             return False
+
+        # check size
+        return (
+            (pad_height - self.height) // self.stride + 1 == after_shape[1]
+            and (pad_width - self.width) // self.stride + 1 == after_shape[2]
+        )
 
     def prepare_connection(self, before_shape, after_shape):
         self.depth = before_shape[0]
         self.filters = after_shape[0]
-        for i in range(self.filters):
-            # filters
-            self.weight.append(
-                (2 * np.random.randn(self.depth, self.height, self.width) - 1)
-                * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
-                # intialization for ReLU
-            )
+
+        # filters (intialization for ReLU)
+        self.weight.append(
+            (2 * np.random.randn(self.filters, self.depth, self.height, self.width) - 1)
+            * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
+        )
         # biases
         self.weight.append(
             np.zeros(self.filters)
         )
 
     def forward(self):
-        for i in range(self.filters):
-            filter_vec = self.weight[i].flatten()
-            bias = np.array([self.weight[self.filters][i]])
-            padded_input = np.zeros((self.before_layer.shape[0], (self.before_layer.shape[1] + 2 * self.padding), (self.before_layer.shape[2] + 2 * self.padding)))
-            padded_input[:, self.padding : self.padding + self.before_layer.shape[1], self.padding : self.padding + self.before_layer.shape[2]] = self.before_layer.result
+        # im2col implementation
+        result_height = self.after_layer.shape[1]
+        result_width = self.after_layer.shape[2]
 
-            calc_matrix = np.zeros((self.height * self.width * self.depth , self.after_layer.shape[1] * self.after_layer.shape[2]))
-            for j in range(self.after_layer.shape[1]):
-                for k in range(self.after_layer.shape[2]):
-                    temp = np.zeros((self.height * self.width * self.depth, 1))
-                    for d in range(self.depth):
-                        layer_values = padded_input[d, j * self.stride : j * self.stride + self.height, k * self.stride : k * self.stride + self.width]
-                        layer_values = layer_values.reshape((self.height * self.width , 1))
-                        temp[d * self.height * self.width : (d + 1) * self.height * self.width, :] = layer_values
-                    calc_matrix[:, j * self.after_layer.shape[2] + k : j * self.after_layer.shape[2] + k + 1] = temp
+        npad = ((0, 0), (self.padding, self.padding), (self.padding, self.padding))
+        padded = np.pad(self.before_layer.result, npad, mode='constant', constant_values=0)
 
-            res = np.dot(filter_vec, calc_matrix)
-            res[:] = res + np.tile(bias, self.after_layer.shape[1] * self.after_layer.shape[2])
-            res = res.reshape((self.after_layer.shape[1], self.after_layer.shape[2]))
-            self.after_layer.result[i, :, :] += res
+        row = np.zeros((self.filters, self.depth * self.height * self.width))
+        col = np.zeros((self.depth * self.height * self.width, result_height * result_width))
+
+        for f in range(self.filters):
+            row[f, :] = self.weight[0][f].flatten()
+
+        for loc_y in range(result_height):
+            for loc_x in range(result_width):
+                index = loc_x + result_width * loc_y
+                col[:, index] = padded[
+                    :,
+                    loc_y * self.stride : loc_y * self.stride + self.height,
+                    loc_x * self.stride : loc_x * self.stride + self.width
+                ].flatten()
+
+        self.after_layer.result += np.reshape(np.dot(row, col), self.after_layer.shape)
+
+        # bias addition
+        self.after_layer.result += self.weight[1].reshape(self.filters, 1, 1)
 
     def backward(self):
         '''
-        backprop currently supports only strides of size 1!!!
+        only strides = 1 is supported
         '''
-        back_error_prop = np.zeros((self.depth, self.before_layer.shape[1], self.before_layer.shape[2]))
+        # error propagation
+        before_height = self.before_layer.shape[1]
+        before_width = self.before_layer.shape[2]
 
-        # zero padding for size of matrix
-        for i in range(self.filters):
-            temp_weights = np.zeros((self.after_layer.shape[1] + (self.height - self.padding - 1) * 2, self.after_layer.shape[2] + (self.width - self.padding - 1) * 2))
-            temp_weights[self.height - self.padding - 1 : self.height + self.after_layer.shape[1] - self.padding - 1, self.width - self.padding - 1 : self.width + self.after_layer.shape[2] - self.padding - 1] = self.after_layer.error[i, :, :]
+        weight_t = np.transpose(self.weight[0], (1, 0, 3, 2))
 
-            # create the matrix of errors
-            error_matrix = np.zeros((self.height * self.width, self.before_layer.shape[1] * self.before_layer.shape[2]))
-            for j in range(self.before_layer.shape[1]):
-                for k in range(self.before_layer.shape[2]):
-                    temp = temp_weights[j * self.stride : j * self.stride + self.height , k * self.stride : k * self.stride + self.width]
-                    temp = temp.reshape(self.height * self.width, 1)
-                    error_matrix[:, j * self.before_layer.shape[2] + k : j * self.before_layer.shape[2] + k + 1] = temp
+        npad = ((0, 0), (self.height-1, self.height-1), (self.width-1, self.width-1))
+        padded = np.pad(self.after_layer.error, npad, mode='constant', constant_values=0)
 
-            for j in range(self.depth):
-                filter_vec = self.weight[i][j, :, :].flatten()
-                filter_vec = filter_vec[: : -1]
-                back_error = np.dot(filter_vec, error_matrix)
-                back_error = back_error.reshape(self.before_layer.shape[1], self.before_layer.shape[2])
-                back_error_prop[j, :, :] += back_error
+        row = np.zeros((self.depth, self.filters * self.height * self.width))
+        col = np.zeros((self.filters * self.height * self.width, before_height * before_width))
 
-        self.before_layer.error[:] += back_error_prop # this transmits the error
+        for f in range(self.depth):
+            row[f, :] = weight_t[f].flatten()
 
-        for i in range(self.filters):
-            filter_vec = self.after_layer.error[i, :, :] # this is the filter for the convolution (backprop uses the error as a convolution filter)
-            filter_vec = filter_vec.flatten() # flatten it
-            bias_update = filter_vec.sum()
+        for loc_y in range(before_height):
+            for loc_x in range(before_width):
+                index = loc_x + before_width * loc_y
+                col[:, index] = padded[:, loc_y : loc_y + self.height, loc_x : loc_x + self.width].flatten()
 
-            calc_matrix = np.zeros((self.after_layer.shape[1] * self.after_layer.shape[2], self.depth * self.height * self.width))
-            temp = np.zeros((self.after_layer.shape[1] * self.after_layer.shape[2], 1))
-            padded_input = np.zeros((self.before_layer.shape[0], (self.before_layer.shape[1] + 2 * self.padding), (self.before_layer.shape[2] + 2 * self.padding)))
-            padded_input[:, self.padding : self.padding + self.before_layer.shape[1], self.padding : self.padding + self.before_layer.shape[2]] = self.before_layer.result
+        self.before_layer.error += np.reshape(np.dot(row, col), self.before_layer.shape)
+
+        # bias propagation
+        self.dweight[1][:] = np.sum(self.after_layer.error, axis=(1,2)).flat
+
+        # weight propagation
+        result_height = self.after_layer.shape[1]
+        result_width = self.after_layer.shape[2]
+
+        npad = ((0, 0), (self.padding, self.padding), (self.padding, self.padding))
+        padded = np.pad(self.before_layer.result, npad, mode='constant', constant_values=0)
+
+        for f in range(self.filters):
+            row = np.zeros((self.depth, self.depth * result_height * result_width))
+            col = np.zeros((self.depth * result_height * result_width, self.height * self.width))
 
             for d in range(self.depth):
-                for j in range(self.height):
-                    for k in range(self.width):
-                        layer_values = padded_input[d, j * self.stride : j * self.stride + self.after_layer.shape[1], k * self.stride : k * self.stride + self.after_layer.shape[2]]
-                        layer_values = layer_values.reshape(self.after_layer.shape[1] * self.after_layer.shape[2], 1)
-                        temp = layer_values
-                        calc_matrix[:, d * self.height * self.width + j * self.width + k : d * self.height * self.width + j * self.width + k + 1] = temp
+                row[d, :] = np.repeat(self.after_layer.error[f].flatten(), self.depth)
 
-            error_matrix = np.dot(filter_vec, calc_matrix)
-            error_matrix = error_matrix.reshape(self.depth, self.height, self.width)
-            self.dweight[i] = error_matrix # update filter
-            self.dweight[self.filters][i] = bias_update
+            for loc_y in range(self.height):
+                for loc_x in range(self.width):
+                    index = loc_x + self.width * loc_y
+                    col[:, index] = padded[:, loc_y : loc_y + result_height, loc_x : loc_x + result_width].flatten()
+
+            self.dweight[0][f][:] = np.reshape(np.dot(row, col), (self.depth, self.height, self.width))
 
 class MaxPooling(DimensionalToDimensional):
-    def __init__(self, height, width, stride):
+    def __init__(self, size, stride):
         super().__init__()
-        self.height = height
-        self.width = width
+        self.size = size
         self.stride = stride
 
     def check_shape(self, before_shape, after_shape):
-        if (before_shape[0] == after_shape[0]
-            and (before_shape[1] - self.height) // self.stride + 1 == after_shape[1]
-            and (before_shape[2] - self.width) // self.stride + 1 == after_shape[2]):
-            return True
-        else:
+        # check exact fit
+        if (before_shape[1] - self.size) % self.stride != 0 or (before_shape[2] - self.size) % self.stride != 0:
             return False
+
+        # check size
+        return (
+            before_shape[0] == after_shape[0]
+            and (before_shape[1] - self.size) // self.stride + 1 == after_shape[1]
+            and (before_shape[2] - self.size) // self.stride + 1 == after_shape[2]
+        )
 
     def prepare_connection(self, before_shape, after_shape):
         pass
 
     def forward(self):
-        for i in range(self.after_layer.shape[0]):
-            for j in range(self.after_layer.shape[1]):
-                for k in range(self.after_layer.shape[2]):
-                    self.after_layer.result[i, j, k] += (
-                        np.amax(self.before_layer.result[i, self.stride * j : self.stride * j + self.height, self.stride * k : self.stride * k + self.width]))
+        result_depth = self.after_layer.shape[0]
+        result_height = self.after_layer.shape[1]
+        result_width = self.after_layer.shape[2]
+
+        for f in range(result_depth):
+            for loc_y in range(result_height):
+                for loc_x in range(result_width):
+                    self.after_layer.result[f, loc_y, loc_x] += (
+                        np.amax(self.before_layer.result[
+                            f,
+                            loc_y * self.stride : loc_y * self.stride + self.size,
+                            loc_x * self.stride : loc_x * self.stride + self.size
+                        ])
+                    )
 
     def backward(self):
-        self.before_layer.error.fill(0)
-        for i in range(self.after_layer.shape[0]):
-            for j in range(self.after_layer.shape[1]):
-                for k in range(self.after_layer.shape[2]):
-                    ind = np.unravel_index(np.argmax(self.before_layer.result[i, self.stride * j : self.stride * j + self.height, self.stride * k : self.stride * k + self.width]), (1, self.height, self.width))
-                    d = ind[0] + i
-                    h = ind[1] + self.stride * j
-                    w = ind[2] + self.stride * k
+        result_depth = self.after_layer.shape[0]
+        result_height = self.after_layer.shape[1]
+        result_width = self.after_layer.shape[2]
 
-                    self.before_layer.error[d, h, w] += self.after_layer.error[i, j, k]
+        for f in range(result_depth):
+            for loc_y in range(result_height):
+                for loc_x in range(result_width):
+                    index = np.argmax(self.before_layer.result[
+                        f,
+                        loc_y * self.stride : loc_y * self.stride + self.size,
+                        loc_x * self.stride : loc_x * self.stride + self.size
+                    ])
+                    self.before_layer.error[f].flat[index] += self.after_layer.error[f, loc_y, loc_x]

@@ -1,4 +1,5 @@
 from abc import ABCMeta
+import math
 
 import numpy as np
 
@@ -22,10 +23,11 @@ class Projection(DimensionToLinear):
 
     def prepare_connection(self, before_shape, after_shape):
         self.weight.append(
-            2 * np.random.random((before_shape[0] * before_shape[1] * before_shape[2], after_shape[1])) - 1
+            (2 * np.random.randn(before_shape[0] * before_shape[1] * before_shape[2], after_shape[1]) - 1)
+            * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
         )
         self.weight.append(
-            np.random.random(after_shape[1])
+            np.zeros(after_shape[1])
         )
 
     def forward(self):

@@ -22,11 +22,10 @@ class FullyConnected(LinearToLinear):
         return True
 
     def prepare_connection(self, before_shape, after_shape):
-        # weight
+        # weight (intialization for ReLU)
         self.weight.append(
             (2 * np.random.randn(before_shape[1], after_shape[1]) - 1)
             * math.sqrt(2 / before_shape[1])
-            # intialization for ReLU
         )
         # bias
         self.weight.append(
