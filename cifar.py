@@ -30,7 +30,7 @@ convnet.add_connection('mlp_ina', 'output', FullyConnected())
 convnet.add_connection('output', 'output_a', Linear())
 
 # change this line to your data path
-tset = open('/Users/Admin/Documents/Workspace/postech/CITE505/HW2/nn-assign2/cifar10/data_batch_1', 'rb')
+tset = open('cifar10/data_batch_1', 'rb')
 rawdata = pickle.load(tset, encoding='bytes')
 
 train_set = []
