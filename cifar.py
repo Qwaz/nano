@@ -2,7 +2,7 @@ import pickle
 
 import numpy as np
 
-from nano.connection.activation import ReLU, Linear, Sigmoid
+from nano.connection.activation import ReLU, Sigmoid, Softmax
 from nano.connection.dimensional_to_dimensional import Convolution, MaxPooling
 from nano.connection.dimensional_to_linear import Projection
 from nano.connection.linear_to_linear import FullyConnected
@@ -27,7 +27,7 @@ convnet.add_connection('conv_1a', 'pool_1', MaxPooling(6, 6, 6))
 convnet.add_connection('pool_1', 'mlp_in', Projection())
 convnet.add_connection('mlp_in', 'mlp_ina', ReLU())
 convnet.add_connection('mlp_ina', 'output', FullyConnected())
-convnet.add_connection('output', 'output_a', Linear())
+convnet.add_connection('output', 'output_a', Softmax())
 
 # change this line to your data path
 tset = open('cifar10/data_batch_1', 'rb')
@@ -53,8 +53,8 @@ for i in range(0, 300):
 tset.close()
 print('loaded')
 def log_result(current_epoch, network):
-    train_error = nano.trainer.rms(network, train_set)
-    print('EPOCH: %d - train error %g' % (current_epoch, train_error))
+    loss, rate = nano.trainer.softmax(network, train_set)
+    print('EPOCH: %d - loss %g, rate %g' % (current_epoch, loss, rate))
 
-sgd = nano.trainer.SGD(convnet)
-sgd.train(train_set, epoch=100, learning_rate=0.001, epoch_func=log_result)
+moemntum = nano.trainer.SGDMomentum(convnet)
+moemntum.train(train_set, epoch=100, momentum_rate=0.9, learning_rate=0.001, epoch_func=log_result)

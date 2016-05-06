@@ -1,4 +1,5 @@
 from abc import ABCMeta, abstractmethod
+import math
 
 import numpy as np
 
@@ -8,11 +9,25 @@ def rms(network, data_set):
     c = 0
     for input_data, output_data in data_set:
         result = network.calculate(input_data)
-        error = output_data - result
+        error = result - output_data
 
         errors[:, c] = error
         c += 1
     return np.sqrt(np.mean(np.square(errors)))
+
+def softmax(network, data_set):
+    error_sum = 0
+    correct = 0
+    num_data = len(data_set)
+    for input_data, output_data in data_set:
+        result = network.calculate(input_data)
+        output_index = np.argmax(output_data)
+        result_index = np.argmax(result)
+        error_sum += -math.log(result[0][output_index])
+        if output_index == result_index:
+            correct += 1
+    # (loss, success_rate)
+    return (error_sum / num_data, correct / num_data)
 
 class Trainer:
     def __init__(self, network):
@@ -46,7 +61,7 @@ class EpochBasedTrainer(Trainer, metaclass=ABCMeta):
                 result = self.network.calculate(input_data)
 
                 # error propagation
-                self.network.learn_error(output_data - result, train_func)
+                self.network.learn_error(result - output_data, train_func)
 
             if kwargs["epoch_func"]:
                 kwargs["epoch_func"](current_epoch, self.network)
@@ -78,7 +93,7 @@ class SGD(EpochBasedTrainer):
     def train_func(self, *, learning_rate, **kwargs):
         def train_connection(connection):
             for i in range(len(connection.weight)):
-                connection.weight[i] += learning_rate * connection.dweight[i]
+                connection.weight[i] += -learning_rate * connection.dweight[i]
         return train_connection
 
 class SGDMomentum(EpochBasedTrainer):
@@ -97,7 +112,7 @@ class SGDMomentum(EpochBasedTrainer):
     def train_func(self, *, momentum_rate, learning_rate, **kwargs):
         def train_connection(connection):
             for i in range(len(connection.weight)):
-                current_speed = learning_rate * connection.dweight[i] + momentum_rate * connection.train_momentum[i]
+                current_speed = -learning_rate * connection.dweight[i] + momentum_rate * connection.train_momentum[i]
                 connection.weight[i] += current_speed
                 connection.train_momentum[i][:] = current_speed
         return train_connection

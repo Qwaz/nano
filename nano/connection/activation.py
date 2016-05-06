@@ -49,3 +49,14 @@ class Tansig(AbsActivation):
 
     fx = np.vectorize(lambda x: math.tanh(x))
     dfdx = np.vectorize(lambda x: 1 - (math.tanh(x) ** 2))
+
+class Softmax(AbsActivation):
+    def __init__(self):
+        super().__init__()
+
+    def forward(self):
+        exp_scores = np.exp(self.before_layer.result)
+        self.after_layer.result += exp_scores / np.sum(exp_scores)
+
+    def backward(self):
+        self.before_layer.error += self.after_layer.error
