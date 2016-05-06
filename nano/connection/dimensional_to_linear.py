@@ -41,4 +41,5 @@ class Projection(DimensionToLinear):
         de = np.multiply(self.weight[0], self.after_layer.error)
         de = np.sum(de, axis=1)
         de = np.reshape(de, self.before_layer.shape)
+
         self.before_layer.error[:] += de

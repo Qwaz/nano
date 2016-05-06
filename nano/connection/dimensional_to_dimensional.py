@@ -15,15 +15,18 @@ class DimensionalToDimensional(AbsConnection, metaclass=ABCMeta):
         return isinstance(before_layer, DimensionalLayer) and isinstance(after_layer, DimensionalLayer)
 
 class Convolution(DimensionalToDimensional):
-    def __init__(self, height, width, stride=1):
+    def __init__(self, height, width, padding=0, stride=1):
         super().__init__()
         self.stride = stride
         self.height = height
         self.width = width
+        self.padding = padding
 
     def check_shape(self, before_shape, after_shape):
-        if ((before_shape[1] - self.height) // self.stride + 1 == after_shape[1]
-            and (before_shape[2] - self.width) // self.stride + 1 == after_shape[2]):
+        if self.padding > self.height - 1 or self.padding > self.width - 1:
+            return False
+        elif ((before_shape[1] + 2 * self.padding - self.height) // self.stride + 1 == after_shape[1]
+            and (before_shape[2] + 2 * self.padding - self.width) // self.stride + 1 == after_shape[2]):
             return True
         else:
             return False
@@ -47,13 +50,15 @@ class Convolution(DimensionalToDimensional):
         for i in range(self.filters):
             filter_vec = self.weight[i].flatten()
             bias = np.array([self.weight[self.filters][i]])
+            padded_input = np.zeros((self.before_layer.shape[0], (self.before_layer.shape[1] + 2 * self.padding), (self.before_layer.shape[2] + 2 * self.padding)))
+            padded_input[:, self.padding : self.padding + self.before_layer.shape[1], self.padding : self.padding + self.before_layer.shape[2]] = self.before_layer.result
 
             calc_matrix = np.zeros((self.height * self.width * self.depth , self.after_layer.shape[1] * self.after_layer.shape[2]))
             for j in range(self.after_layer.shape[1]):
                 for k in range(self.after_layer.shape[2]):
                     temp = np.zeros((self.height * self.width * self.depth, 1))
                     for d in range(self.depth):
-                        layer_values = self.before_layer.result[d, j * self.stride : j * self.stride + self.height, k * self.stride : k * self.stride + self.width]
+                        layer_values = padded_input[d, j * self.stride : j * self.stride + self.height, k * self.stride : k * self.stride + self.width]
                         layer_values = layer_values.reshape((self.height * self.width , 1))
                         temp[d * self.height * self.width : (d + 1) * self.height * self.width, :] = layer_values
                     calc_matrix[:, j * self.after_layer.shape[2] + k : j * self.after_layer.shape[2] + k + 1] = temp
@@ -71,11 +76,11 @@ class Convolution(DimensionalToDimensional):
 
         # zero padding for size of matrix
         for i in range(self.filters):
-            temp_weights = np.zeros((self.after_layer.shape[1] + (self.height - 1) * 2, self.after_layer.shape[2] * (self.width - 1) * 2))
-            temp_weights[self.height - 1 : self.height + self.after_layer.shape[1] - 1, self.width - 1 : self.width + self.after_layer.shape[2] - 1] = self.after_layer.error[i, :, :]
+            temp_weights = np.zeros((self.after_layer.shape[1] + (self.height - self.padding - 1) * 2, self.after_layer.shape[2] + (self.width - self.padding - 1) * 2))
+            temp_weights[self.height - self.padding - 1 : self.height + self.after_layer.shape[1] - self.padding - 1, self.width - self.padding - 1 : self.width + self.after_layer.shape[2] - self.padding - 1] = self.after_layer.error[i, :, :]
+
             # create the matrix of errors
             error_matrix = np.zeros((self.height * self.width, self.before_layer.shape[1] * self.before_layer.shape[2]))
-
             for j in range(self.before_layer.shape[1]):
                 for k in range(self.before_layer.shape[2]):
                     temp = temp_weights[j * self.stride : j * self.stride + self.height , k * self.stride : k * self.stride + self.width]
@@ -98,10 +103,13 @@ class Convolution(DimensionalToDimensional):
 
             calc_matrix = np.zeros((self.after_layer.shape[1] * self.after_layer.shape[2], self.depth * self.height * self.width))
             temp = np.zeros((self.after_layer.shape[1] * self.after_layer.shape[2], 1))
+            padded_input = np.zeros((self.before_layer.shape[0], (self.before_layer.shape[1] + 2 * self.padding), (self.before_layer.shape[2] + 2 * self.padding)))
+            padded_input[:, self.padding : self.padding + self.before_layer.shape[1], self.padding : self.padding + self.before_layer.shape[2]] = self.before_layer.result
+
             for d in range(self.depth):
                 for j in range(self.height):
                     for k in range(self.width):
-                        layer_values = self.before_layer.result[d, j * self.stride : j * self.stride + self.after_layer.shape[1], k * self.stride : k * self.stride + self.after_layer.shape[2]]
+                        layer_values = padded_input[d, j * self.stride : j * self.stride + self.after_layer.shape[1], k * self.stride : k * self.stride + self.after_layer.shape[2]]
                         layer_values = layer_values.reshape(self.after_layer.shape[1] * self.after_layer.shape[2], 1)
                         temp = layer_values
                         calc_matrix[:, d * self.height * self.width + j * self.width + k : d * self.height * self.width + j * self.width + k + 1] = temp
@@ -145,4 +153,5 @@ class MaxPooling(DimensionalToDimensional):
                     d = ind[0] + i
                     h = ind[1] + self.stride * j
                     w = ind[2] + self.stride * k
+
                     self.before_layer.error[d, h, w] += self.after_layer.error[i, j, k]
