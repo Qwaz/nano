@@ -1,2 +1,3 @@
 *.pyc
 *.npz
+cifar-10-batches-py/*

@@ -16,8 +16,10 @@ class DimensionToLinear(AbsConnection, metaclass=ABCMeta):
 class Projection(DimensionToLinear):
     def __init__(self):
         super().__init__()
+
     def check_shape(self, before_shape, after_shape):
         return True
+
     def prepare_connection(self, before_shape, after_shape):
         self.weight.append(
             2 * np.random.random((before_shape[0] * before_shape[1] * before_shape[2], after_shape[1])) - 1
@@ -25,6 +27,7 @@ class Projection(DimensionToLinear):
         self.weight.append(
             np.random.random(after_shape[1])
         )
+
     def forward(self):
         input_temp = self.before_layer.result.flatten()
         self.after_layer.result += np.dot(input_temp, self.weight[0]) + self.weight[1]
@@ -38,4 +41,5 @@ class Projection(DimensionToLinear):
         de = np.multiply(self.weight[0], self.after_layer.error)
         de = np.sum(de, axis=1)
         de = np.reshape(de, self.before_layer.shape)
-        np.copyto(self.before_layer.error, de)
+
+        self.before_layer.error[:] += de

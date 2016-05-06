@@ -1,4 +1,5 @@
 from abc import ABCMeta
+import math
 
 import numpy as np
 
@@ -21,11 +22,15 @@ class FullyConnected(LinearToLinear):
         return True
 
     def prepare_connection(self, before_shape, after_shape):
+        # weight
         self.weight.append(
-            2 * np.random.random((before_shape[1], after_shape[1])) - 1# weight
+            (2 * np.random.randn(before_shape[1], after_shape[1]) - 1)
+            * math.sqrt(2 / before_shape[1])
+            # intialization for ReLU
         )
+        # bias
         self.weight.append(
-            np.random.random(after_shape[1]) # bias
+            np.zeros(after_shape[1])
         )
 
     def forward(self):

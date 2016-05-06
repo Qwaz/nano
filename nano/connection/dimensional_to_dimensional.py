@@ -1,7 +1,8 @@
 from abc import ABCMeta
+import math
 
 import numpy as np
-import math
+
 from nano.connection import AbsConnection
 from nano.layer import DimensionalLayer
 
@@ -31,11 +32,15 @@ class Convolution(DimensionalToDimensional):
         self.depth = before_shape[0]
         self.filters = after_shape[0]
         for i in range(self.filters):
-            self.weight.append(# filters
-                (2 * np.random.random((self.depth, self.height, self.width)) - 1) * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2])) #intialization for ReLU, change if needed
+            # filters
+            self.weight.append(
+                (2 * np.random.randn(self.depth, self.height, self.width) - 1)
+                * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
+                # intialization for ReLU
             )
-        self.weight.append(# biases
-            (2 * np.random.random(self.filters) - 1) * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
+        # biases
+        self.weight.append(
+            np.zeros(self.filters)
         )
 
     def forward(self):
@@ -50,24 +55,25 @@ class Convolution(DimensionalToDimensional):
                     for d in range(self.depth):
                         layer_values = self.before_layer.result[d, j * self.stride : j * self.stride + self.height, k * self.stride : k * self.stride + self.width]
                         layer_values = layer_values.reshape((self.height * self.width , 1))
-                        temp[d * self.height * self.width : (d + 1) * self.height * self.width, :] = layer_values    
+                        temp[d * self.height * self.width : (d + 1) * self.height * self.width, :] = layer_values
                     calc_matrix[:, j * self.after_layer.shape[2] + k : j * self.after_layer.shape[2] + k + 1] = temp
 
             res = np.dot(filter_vec, calc_matrix)
             res[:] = res + np.tile(bias, self.after_layer.shape[1] * self.after_layer.shape[2])
             res = res.reshape((self.after_layer.shape[1], self.after_layer.shape[2]))
-            self.after_layer.result[i, :, :] += res    
+            self.after_layer.result[i, :, :] += res
 
     def backward(self):
         '''
         backprop currently supports only strides of size 1!!!
         '''
         back_error_prop = np.zeros((self.depth, self.before_layer.shape[1], self.before_layer.shape[2]))
+
         # zero padding for size of matrix
         for i in range(self.filters):
             temp_weights = np.zeros((self.after_layer.shape[1] + (self.height - 1) * 2, self.after_layer.shape[2] * (self.width - 1) * 2))
             temp_weights[self.height - 1 : self.height + self.after_layer.shape[1] - 1, self.width - 1 : self.width + self.after_layer.shape[2] - 1] = self.after_layer.error[i, :, :]
-            #create the matrix of errors 
+            # create the matrix of errors
             error_matrix = np.zeros((self.height * self.width, self.before_layer.shape[1] * self.before_layer.shape[2]))
 
             for j in range(self.before_layer.shape[1]):
@@ -83,13 +89,13 @@ class Convolution(DimensionalToDimensional):
                 back_error = back_error.reshape(self.before_layer.shape[1], self.before_layer.shape[2])
                 back_error_prop[j, :, :] += back_error
 
-        self.before_layer.error[:] = back_error_prop #this transmits the error
+        self.before_layer.error[:] += back_error_prop # this transmits the error
 
         for i in range(self.filters):
             filter_vec = self.after_layer.error[i, :, :] # this is the filter for the convolution (backprop uses the error as a convolution filter)
-            filter_vec = filter_vec.flatten() # we flatten it
+            filter_vec = filter_vec.flatten() # flatten it
             bias_update = filter_vec.sum()
-            
+
             calc_matrix = np.zeros((self.after_layer.shape[1] * self.after_layer.shape[2], self.depth * self.height * self.width))
             temp = np.zeros((self.after_layer.shape[1] * self.after_layer.shape[2], 1))
             for d in range(self.depth):
@@ -102,7 +108,7 @@ class Convolution(DimensionalToDimensional):
 
             error_matrix = np.dot(filter_vec, calc_matrix)
             error_matrix = error_matrix.reshape(self.depth, self.height, self.width)
-            self.dweight[i] = error_matrix #update filter
+            self.dweight[i] = error_matrix # update filter
             self.dweight[self.filters][i] = bias_update
 
 class MaxPooling(DimensionalToDimensional):
@@ -127,7 +133,7 @@ class MaxPooling(DimensionalToDimensional):
         for i in range(self.after_layer.shape[0]):
             for j in range(self.after_layer.shape[1]):
                 for k in range(self.after_layer.shape[2]):
-                    self.after_layer.result[i, j, k] = (
+                    self.after_layer.result[i, j, k] += (
                         np.amax(self.before_layer.result[i, self.stride * j : self.stride * j + self.height, self.stride * k : self.stride * k + self.width]))
 
     def backward(self):
@@ -139,4 +145,5 @@ class MaxPooling(DimensionalToDimensional):
                     d = ind[0] + i
                     h = ind[1] + self.stride * j
                     w = ind[2] + self.stride * k
-                    self.before_layer.error[d, h, w] = self.after_layer.error[i, j, k]
+
+                    self.before_layer.error[d, h, w] += self.after_layer.error[i, j, k]
