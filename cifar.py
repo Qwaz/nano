@@ -1,5 +1,6 @@
-import numpy as np
 import pickle
+
+import numpy as np
 
 from nano.connection.activation import ReLU, Linear, Sigmoid
 from nano.connection.dimensional_to_dimensional import Convolution, MaxPooling
@@ -28,7 +29,8 @@ convnet.add_connection('mlp_in', 'mlp_ina', ReLU())
 convnet.add_connection('mlp_ina', 'output', FullyConnected())
 convnet.add_connection('output', 'output_a', Linear())
 
-tset = open('<path_to_cifar_dataset>', 'rb')
+# change this line to your data path
+tset = open('cifar-10-batches-py/data_batch_1', 'rb')
 rawdata = pickle.load(tset, encoding='bytes')
 
 train_set = []
@@ -55,4 +57,4 @@ def log_result(current_epoch, network):
     print('EPOCH: %d - train error %g' % (current_epoch, train_error))
 
 sgd = nano.trainer.SGD(convnet)
-sgd.train(train_set, epoch=100, learning_rate=0.00002, epoch_func=log_result)
+sgd.train(train_set, epoch=100, learning_rate=0.001, epoch_func=log_result)
