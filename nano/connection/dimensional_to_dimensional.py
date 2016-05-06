@@ -14,7 +14,7 @@ class DimensionalToDimensional(AbsConnection, metaclass=ABCMeta):
         return isinstance(before_layer, DimensionalLayer) and isinstance(after_layer, DimensionalLayer)
 
 class Convolution(DimensionalToDimensional):
-    def __init__(self, height, width, stride=1):
+    def __init__(self, height, width, stride=1, padding):
         super().__init__()
         self.stride = stride
         self.height = height
@@ -140,4 +140,3 @@ class MaxPooling(DimensionalToDimensional):
                     h = ind[1] + self.stride * j
                     w = ind[2] + self.stride * k
                     self.before_layer.error[d, h, w] = self.after_layer.error[i, j, k]
-        
