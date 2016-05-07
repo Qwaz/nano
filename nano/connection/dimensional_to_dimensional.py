@@ -46,7 +46,7 @@ class Convolution(DimensionalToDimensional):
 
         # filters (intialization for ReLU)
         self.weight.append(
-            (2 * np.random.randn(self.filters, self.depth, self.height, self.width) - 1)
+            np.random.randn(self.filters, self.depth, self.height, self.width)
             * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
         )
         # biases
@@ -124,7 +124,7 @@ class Convolution(DimensionalToDimensional):
 
             for d in range(self.depth):
                 row[d, :] = np.repeat(self.after_layer.error[f].flatten(), self.depth)
-
+                
             for loc_y in range(self.height):
                 for loc_x in range(self.width):
                     index = loc_x + self.width * loc_y
@@ -183,3 +183,61 @@ class MaxPooling(DimensionalToDimensional):
                         loc_x * self.stride : loc_x * self.stride + self.size
                     ])
                     self.before_layer.error[f].flat[index] += self.after_layer.error[f, loc_y, loc_x]
+
+class AveragePooling(DimensionalToDimensional):
+    def __init__(self, size, stride):
+        super().__init__()
+        self.size = size
+        self.stride = stride
+
+    def check_shape(self, before_shape, after_shape):
+        # check exact fit
+        if (before_shape[1] - self.size) % self.stride != 0 or (before_shape[2] - self.size) % self.stride != 0:
+            return False
+
+        # check size
+        return (
+            before_shape[0] == after_shape[0]
+            and (before_shape[1] - self.size) // self.stride + 1 == after_shape[1]
+            and (before_shape[2] - self.size) // self.stride + 1 == after_shape[2]
+        )
+
+    def prepare_connection(self, before_shape, after_shape):
+        pass
+
+    def forward(self):
+        result_height = self.after_layer.shape[1]
+        result_width = self.after_layer.shape[2]
+
+        row = np.zeros((self.before_layer.shape[0], self.size ** 2))
+        col = np.zeros((self.size ** 2, result_height * result_width))
+
+        row.fill(1 / (self.size ** 2))
+
+        for d in range(self.before_layer.shape[0]):
+            for loc_y in range(result_height):
+                for loc_x in range(result_width):
+                    index = loc_x + result_width * loc_y
+                    col[:, index] = self.before_layer.result[
+                        d,
+                        loc_y * self.stride : loc_y * self.stride + self.size,
+                        loc_x * self.stride : loc_x * self.stride + self.size
+                    ].flatten()
+
+        self.after_layer.result += np.reshape(np.dot(row, col), self.after_layer.shape)
+
+    def backward(self):
+        result_depth = self.after_layer.shape[0]
+        result_height = self.after_layer.shape[1]
+        result_width = self.after_layer.shape[2]
+        error_matrix = np.empty((self.size, self.size))
+
+        for f in range(result_depth):
+            for loc_y in range(result_height):
+                for loc_x in range(result_width):
+                    error_matrix.fill(self.after_layer.error[f, loc_y, loc_x] / (self.size ** 2))
+                    (self.before_layer.error[
+                        f,
+                        loc_y * self.stride : loc_y * self.stride + self.size,
+                        loc_x * self.stride : loc_x * self.stride + self.size
+                    ]) = error_matrix
