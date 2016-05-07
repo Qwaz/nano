@@ -44,7 +44,6 @@ class Trainer:
 class EpochBasedTrainer(Trainer, metaclass=ABCMeta):
     '''
     [required]
-    network: Network object
     train_set: tuple of (input_vector, output_vector)
 
     [optional]

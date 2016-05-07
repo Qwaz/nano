@@ -111,12 +111,14 @@ class Network:
                 train_func(connection)
 
     def save_weight(self, file_name):
-        weights = []
+        weights = {}
+        count = 0
         for name, layer in sorted(self.layers.items()):
             for connection in layer.connections:
                 for weight in connection.weight:
-                    weights.append(weight)
-        np.savez_compressed(file_name, *weights)
+                    weights['arr_%05d' % count] = weight
+                    count += 1
+        np.savez_compressed(file_name, **weights)
 
     def load_weight(self, file_name):
         data = np.load(file_name)

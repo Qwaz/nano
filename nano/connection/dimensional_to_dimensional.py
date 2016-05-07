@@ -47,8 +47,8 @@ class Convolution(DimensionalToDimensional):
 
         # filters (intialization for ReLU)
         self.weight.append(
-            np.random.randn(self.filters, self.depth, self.height, self.width)
-            * math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
+            np.random.randn(self.filters, self.depth, self.height, self.width) *
+            math.sqrt(2 / (before_shape[0] * before_shape[1] * before_shape[2]))
         )
         # biases
         self.weight.append(
@@ -110,7 +110,7 @@ class Convolution(DimensionalToDimensional):
         self.before_layer.error += np.reshape(np.dot(row, col), self.before_layer.shape)
 
         # bias propagation
-        self.dweight[1][:] = np.sum(self.after_layer.error, axis=(1,2)).flat
+        self.dweight[1][:] = np.sum(self.after_layer.error, axis=(1, 2)).flat
 
         # weight propagation
         result_height = self.after_layer.shape[1]
@@ -147,9 +147,9 @@ class MaxPooling(DimensionalToDimensional):
 
         # check size
         return (
-            before_shape[0] == after_shape[0]
-            and (before_shape[1] - self.size) // self.stride + 1 == after_shape[1]
-            and (before_shape[2] - self.size) // self.stride + 1 == after_shape[2]
+            before_shape[0] == after_shape[0] and
+            (before_shape[1] - self.size) // self.stride + 1 == after_shape[1] and
+            (before_shape[2] - self.size) // self.stride + 1 == after_shape[2]
         )
 
     def prepare_connection(self, before_shape, after_shape):
