@@ -206,18 +206,19 @@ class AveragePooling(DimensionalToDimensional):
         pass
 
     def forward(self):
+        result_depth = self.after_layer.shape[0]
         result_height = self.after_layer.shape[1]
         result_width = self.after_layer.shape[2]
 
-        row = np.zeros((self.before_layer.shape[0], self.size ** 2))
-        col = np.zeros((self.size ** 2, result_height * result_width))
+        row = np.zeros((self.size ** 2))
+        col = np.zeros((self.size ** 2, result_depth * result_height * result_width))
 
         row.fill(1 / (self.size ** 2))
 
-        for d in range(self.before_layer.shape[0]):
+        for d in range(result_depth):
             for loc_y in range(result_height):
                 for loc_x in range(result_width):
-                    index = loc_x + result_width * loc_y
+                    index = loc_x + result_width * loc_y + result_height * result_width * d
                     col[:, index] = self.before_layer.result[
                         d,
                         loc_y * self.stride : loc_y * self.stride + self.size,
