@@ -116,3 +116,51 @@ class SGDMomentum(EpochBasedTrainer):
                 connection.weight[i] += current_speed
                 connection.train_momentum[i][:] = current_speed
         return train_connection
+
+class Nesterov(EpochBasedTrainer):
+    def init_func(self, **kwargs):
+        def init_connection(connection):
+            connection.train_prev = []
+            connection.train_v = []
+            for weight in connection.weight:
+                connection.train_prev.append(np.zeros(weight.shape))
+                connection.train_v.append(np.zeros(weight.shape))
+        return init_connection
+
+    '''
+    [required]
+    momentum_rate
+    learning_rate
+    '''
+    def train_func(self, *, momentum_rate, learning_rate, **kwargs):
+        def train_connection(connection):
+            for i in range(len(connection.weight)):
+                connection.train_prev[i][:] = connection.train_v[i]
+                connection.train_v[i][:] = -learning_rate * connection.dweight[i] + momentum_rate * connection.train_v[i]
+                connection.weight[i] += -momentum_rate * connection.train_prev[i] + (1 + momentum_rate) * connection.train_v[i]
+        return train_connection
+
+class Adam(EpochBasedTrainer):
+    def init_func(self, **kwargs):
+        def init_connection(connection):
+            connection.train_m = []
+            connection.train_v = []
+            for weight in connection.weight:
+                connection.train_m.append(np.zeros(weight.shape))
+                connection.train_v.append(np.zeros(weight.shape))
+        return init_connection
+
+    '''
+    [required]
+    beta1
+    beta2
+    eps
+    learning_rate
+    '''
+    def train_func(self, *, beta1, beta2, eps, learning_rate, **kwargs):
+        def train_connection(connection):
+            for i in range(len(connection.weight)):
+                connection.train_m[i][:] = beta1 * connection.train_m[i][:] + (1-beta1) * connection.dweight[i]
+                connection.train_v[i][:] = beta2 * connection.train_v[i][:] + (1-beta2) * (connection.dweight[i] ** 2)
+                connection.weight[i] += -learning_rate * connection.train_m[i] / (np.sqrt(connection.train_v[i]) + eps)
+        return train_connection
