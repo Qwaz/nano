@@ -14,6 +14,7 @@ class LinearToLinear(AbsConnection, metaclass=ABCMeta):
     def check_layer_type(self, before_layer, after_layer):
         return isinstance(before_layer, LinearLayer) and isinstance(after_layer, LinearLayer)
 
+
 class FullyConnected(LinearToLinear):
     def __init__(self):
         super().__init__()

@@ -10,6 +10,7 @@ class ConnectionError(Exception):
     def __str__(self):
         return repr(self.value)
 
+
 class AbsConnection(metaclass=ABCMeta):
     def __init__(self):
         self.connected = False

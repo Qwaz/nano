@@ -15,6 +15,7 @@ def rms(network, data_set):
         c += 1
     return np.sqrt(np.mean(np.square(errors)))
 
+
 def softmax(network, data_set):
     error_sum = 0
     correct = 0
@@ -29,6 +30,7 @@ def softmax(network, data_set):
     # (loss, success_rate)
     return (error_sum / num_data, correct / num_data)
 
+
 class Trainer:
     def __init__(self, network):
         self.network = network
@@ -37,6 +39,7 @@ class Trainer:
     @abstractmethod
     def train(self):
         pass
+
 
 class EpochBasedTrainer(Trainer, metaclass=ABCMeta):
     '''
@@ -80,6 +83,7 @@ class EpochBasedTrainer(Trainer, metaclass=ABCMeta):
         '''
         pass
 
+
 class SGD(EpochBasedTrainer):
     def init_func(self, **kwargs):
         def init_connection(connection):
@@ -95,6 +99,7 @@ class SGD(EpochBasedTrainer):
             for i in range(len(connection.weight)):
                 connection.weight[i] += -learning_rate * connection.dweight[i]
         return train_connection
+
 
 class SGDMomentum(EpochBasedTrainer):
     def init_func(self, **kwargs):
@@ -116,6 +121,7 @@ class SGDMomentum(EpochBasedTrainer):
                 connection.weight[i] += current_speed
                 connection.train_momentum[i][:] = current_speed
         return train_connection
+
 
 class Nesterov(EpochBasedTrainer):
     def init_func(self, **kwargs):
@@ -139,6 +145,7 @@ class Nesterov(EpochBasedTrainer):
                 connection.train_v[i][:] = -learning_rate * connection.dweight[i] + momentum_rate * connection.train_v[i]
                 connection.weight[i] += -momentum_rate * connection.train_prev[i] + (1 + momentum_rate) * connection.train_v[i]
         return train_connection
+
 
 class Adam(EpochBasedTrainer):
     def init_func(self, **kwargs):

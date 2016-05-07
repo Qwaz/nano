@@ -14,13 +14,14 @@ class DimensionalToDimensional(AbsConnection, metaclass=ABCMeta):
     def check_layer_type(self, before_layer, after_layer):
         return isinstance(before_layer, DimensionalLayer) and isinstance(after_layer, DimensionalLayer)
 
+
 class Convolution(DimensionalToDimensional):
     def __init__(self, height, width, padding=0):
         super().__init__()
         self.height = height
         self.width = width
         self.padding = padding
-        self.stride = 1 # currently nano only supports stride=1
+        self.stride = 1  # currently nano only supports stride=1
 
     def check_shape(self, before_shape, after_shape):
         pad_height = before_shape[1] + 2 * self.padding
@@ -131,6 +132,7 @@ class Convolution(DimensionalToDimensional):
                     col[:, index] = padded[:, loc_y : loc_y + result_height, loc_x : loc_x + result_width].flatten()
 
             self.dweight[0][f][:] = np.reshape(np.dot(row, col), (self.depth, self.height, self.width))
+
 
 class MaxPooling(DimensionalToDimensional):
     def __init__(self, size, stride):

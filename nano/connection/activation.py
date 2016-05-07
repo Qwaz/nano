@@ -3,7 +3,7 @@ import math
 
 import numpy as np
 
-from nano.connection import AbsConnection, abstractmethod
+from nano.connection import AbsConnection
 
 
 class AbsActivation(AbsConnection, metaclass=ABCMeta):
@@ -22,12 +22,14 @@ class AbsActivation(AbsConnection, metaclass=ABCMeta):
     def backward(self):
         self.before_layer.error += np.multiply(self.after_layer.error, type(self).dfdx(self.before_layer.result))
 
+
 class Linear(AbsActivation):
     def __init__(self):
         super().__init__()
 
     fx = np.vectorize(lambda x: x)
     dfdx = np.vectorize(lambda x: 1)
+
 
 class ReLU(AbsActivation):
     def __init__(self):
@@ -36,6 +38,7 @@ class ReLU(AbsActivation):
     fx = np.vectorize(lambda x: x * (x > 0))
     dfdx = np.vectorize(lambda x: x > 0)
 
+
 class Sigmoid(AbsActivation):
     def __init__(self):
         super().__init__()
@@ -43,12 +46,14 @@ class Sigmoid(AbsActivation):
     fx = np.vectorize(lambda x: 1 / (1 + math.exp(-x)))
     dfdx = np.vectorize(lambda x: (1 / (1 + math.exp(-x))) * (1 - 1 / (1 + math.exp(-x))))
 
+
 class Tansig(AbsActivation):
     def __init__(self):
         super().__init__()
 
     fx = np.vectorize(lambda x: math.tanh(x))
     dfdx = np.vectorize(lambda x: 1 - (math.tanh(x) ** 2))
+
 
 class Softmax(AbsActivation):
     def __init__(self):

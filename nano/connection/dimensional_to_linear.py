@@ -7,12 +7,14 @@ from nano.connection import AbsConnection
 from nano.layer import DimensionalLayer
 from nano.layer import LinearLayer
 
+
 class DimensionToLinear(AbsConnection, metaclass=ABCMeta):
     def __init__(self):
         super().__init__()
 
     def check_layer_type(self, before_layer, after_layer):
         return isinstance(before_layer, DimensionalLayer) and isinstance(after_layer, LinearLayer)
+
 
 class Projection(DimensionToLinear):
     def __init__(self):

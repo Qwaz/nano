@@ -1,7 +1,5 @@
 import numpy as np
 
-from nano.connection.activation import AbsActivation
-
 
 class NetworkError(Exception):
     def __init__(self, value):
@@ -9,6 +7,7 @@ class NetworkError(Exception):
 
     def __str__(self):
         return repr(self.value)
+
 
 class Network:
     def __init__(self, input_layer_name, output_layer_name):

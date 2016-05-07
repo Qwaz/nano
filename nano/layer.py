@@ -7,8 +7,9 @@ class Layer(metaclass=ABCMeta):
     def __init__(self):
         self.added = False
         self.connections = []
-        self.pre_layer_count = 0 # overall connection count
-        self.pre_layer_connect = 0 # connection count for topology sort
+        self.pre_layer_count = 0  # overall connection count
+        self.pre_layer_connect = 0  # connection count for topology sort
+
 
 class LinearLayer(Layer):
     def __init__(self, num_neurons):
@@ -18,8 +19,9 @@ class LinearLayer(Layer):
         self.result = np.zeros(self.shape, dtype=np.double)
         self.error = np.zeros(self.shape, dtype=np.double)
 
+
 class DimensionalLayer(Layer):
-    def __init__(self, depth, height, width): # changed order
+    def __init__(self, depth, height, width):  # changed order
         Layer.__init__(self)
         self.shape = (depth, height, width)
         self.result = np.zeros(self.shape, dtype=np.double)
