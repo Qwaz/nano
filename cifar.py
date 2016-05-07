@@ -6,6 +6,7 @@ import random
 import numpy as np
 
 from nano.connection.activation import ReLU, Softmax
+
 from nano.connection.dimensional_to_dimensional import Convolution, MaxPooling, AveragePooling
 from nano.connection.dimensional_to_linear import Projection
 from nano.connection.linear_to_linear import FullyConnected
@@ -227,27 +228,29 @@ except Exception as e:
     print('load failed')
 
 
-log_file = open('cifar.log', 'a')
 
 
-def log(str):
+def log(file, str):
     print(str)
-    log_file.write(str + '\n')
+    file.write(str + '\n')
 
 
 def log_result(epoch, batch, train_dloss, train_rloss, train_rate, network):
+    log_file = open('cifar.log', 'a')
+
     convnet.save_weight('cifar.npz')
-    log(str(datetime.datetime.now()))
-    log('Epoch %d, Batch %d' % (epoch, batch))
+    log(log_file, str(datetime.datetime.now()))
+    log(log_file, 'Epoch %d, Batch %d' % (epoch, batch))
 
     random.shuffle(valid_set)
     dloss, rloss, rate = my_loss(network, valid_set[:num_validate])
-    log('Training %d sample\t dloss %10g rloss %10g rate %10g' % (num_tick, train_dloss, train_rloss, train_rate))
-    log('Validate %d sample\t dloss %10g rloss %10g rate %10g' % (num_validate, dloss, rloss, rate))
-    log('')
+    log(log_file, 'Training %d sample\t dloss %10g rloss %10g rate %10g' % (num_tick, train_dloss, train_rloss, train_rate))
+    log(log_file, 'Validate %d sample\t dloss %10g rloss %10g rate %10g' % (num_validate, dloss, rloss, rate))
+    log(log_file, '')
+
+    log_file.close()
 
 # train start
 trainer = MyTrainer(convnet)
-trainer.train(train_set, epoch=10000, weight_decay=decay_rate, momentum_rate=0.9, learning_rate=0.01, decay_epoch=8, batch_func=log_result)
+trainer.train(train_set, epoch=10000, weight_decay=decay_rate, momentum_rate=0.9, learning_rate=0.01, decay_epoch=5, batch_func=log_result)
 
-log_file.close()
