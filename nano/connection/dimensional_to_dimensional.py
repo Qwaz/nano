@@ -184,7 +184,11 @@ class MaxPooling(DimensionalToDimensional):
                         loc_y * self.stride : loc_y * self.stride + self.size,
                         loc_x * self.stride : loc_x * self.stride + self.size
                     ])
-                    self.before_layer.error[f].flat[index] += self.after_layer.error[f, loc_y, loc_x]
+                    real_y = (index // self.size) + loc_y * self.stride
+                    real_x = (index % self.size) + loc_x * self.stride
+                    real_index = real_y * self.before_layer.shape[2] + real_x
+                    self.before_layer.error[f].flat[real_index] += self.after_layer.error[f, loc_y, loc_x]
+
 
 class AveragePooling(DimensionalToDimensional):
     def __init__(self, size, stride):
