@@ -88,26 +88,29 @@ class Convolution(DimensionalToDimensional):
         only strides = 1 is supported
         '''
         # error propagation
-        before_height = self.before_layer.shape[1]
-        before_width = self.before_layer.shape[2]
+        padded_height = self.before_layer.shape[1] + self.padding * 2
+        padded_width = self.before_layer.shape[2] + self.padding * 2
 
-        weight_t = np.transpose(self.weight[0], (1, 0, 3, 2))
+        # depth, filter, height, width
+        # height <-> width reversed
+        weight_t = np.transpose(self.weight[0], (1, 0, 2, 3))[:, :, ::-1, ::-1]
 
         npad = ((0, 0), (self.height-1, self.height-1), (self.width-1, self.width-1))
         padded = np.pad(self.after_layer.error, npad, mode='constant', constant_values=0)
 
         row = np.zeros((self.depth, self.filters * self.height * self.width))
-        col = np.zeros((self.filters * self.height * self.width, before_height * before_width))
+        col = np.zeros((self.filters * self.height * self.width, padded_height * padded_width))
 
         for f in range(self.depth):
             row[f, :] = weight_t[f].flatten()
 
-        for loc_y in range(before_height):
-            for loc_x in range(before_width):
-                index = loc_x + before_width * loc_y
+        for loc_y in range(padded_height):
+            for loc_x in range(padded_width):
+                index = loc_x + padded_width * loc_y
                 col[:, index] = padded[:, loc_y : loc_y + self.height, loc_x : loc_x + self.width].flatten()
 
-        self.before_layer.error += np.reshape(np.dot(row, col), self.before_layer.shape)
+        reshaped = np.reshape(np.dot(row, col), (self.depth, padded_height, padded_width))
+        self.before_layer.error += reshaped[:, self.padding:-self.padding, self.padding:-self.padding]
 
         # bias propagation
         self.dweight[1][:] = np.sum(self.after_layer.error, axis=(1, 2)).flat
@@ -125,7 +128,7 @@ class Convolution(DimensionalToDimensional):
 
             for d in range(self.depth):
                 row[d, :] = np.repeat(self.after_layer.error[f].flatten(), self.depth)
-                
+
             for loc_y in range(self.height):
                 for loc_x in range(self.width):
                     index = loc_x + self.width * loc_y
