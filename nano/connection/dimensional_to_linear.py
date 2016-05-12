@@ -33,17 +33,14 @@ class Projection(DimensionToLinear):
         )
 
     def forward(self):
-        input_temp = self.before_layer.result.flatten()
-        self.after_layer.result += np.dot(input_temp, self.weight[0]) + self.weight[1]
+        self.after_layer.result += np.dot(self.before_layer.result.flatten(), self.weight[0]) + self.weight[1]
 
     def backward(self):
-        dw = np.repeat(np.array([self.before_layer.result.flatten()]).T, self.after_layer.shape[1], axis=1)
-        dw = np.multiply(dw, self.after_layer.error)
-        self.dweight[0][:] = dw
+        before_size = self.before_layer.shape[0] * self.before_layer.shape[1] * self.before_layer.shape[2]
+        dw = np.repeat(np.reshape(self.before_layer.result, (before_size, 1)), self.after_layer.shape[1], axis=1)
+        self.dweight[0][:] = np.multiply(dw, self.after_layer.error)
         self.dweight[1][:] = self.after_layer.error
 
         de = np.multiply(self.weight[0], self.after_layer.error)
         de = np.sum(de, axis=1)
-        de = np.reshape(de, self.before_layer.shape)
-
-        self.before_layer.error[:] += de
+        self.before_layer.error[:] += np.reshape(de, self.before_layer.shape)

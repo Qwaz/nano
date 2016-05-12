@@ -71,7 +71,9 @@ class Softmax(AbsActivation):
         super().__init__()
 
     def forward(self):
-        exp_scores = np.exp(self.before_layer.result)
+        norm_result = np.copy(self.before_layer.result)
+        norm_result -= np.amax(norm_result)
+        exp_scores = np.exp(norm_result)
         self.after_layer.result += exp_scores / np.sum(exp_scores)
 
     def backward(self):

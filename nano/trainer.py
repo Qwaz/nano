@@ -166,7 +166,7 @@ class Adam(EpochBasedTrainer):
     def train_func(self, *, beta1, beta2, eps, learning_rate, **kwargs):
         def train_connection(connection):
             for i in range(len(connection.weight)):
-                connection.train_m[i][:] = beta1 * connection.train_m[i][:] + (1-beta1) * connection.dweight[i]
-                connection.train_v[i][:] = beta2 * connection.train_v[i][:] + (1-beta2) * (connection.dweight[i] ** 2)
+                connection.train_m[i][:] = beta1 * connection.train_m[i] + (1-beta1) * connection.dweight[i]
+                connection.train_v[i][:] = beta2 * connection.train_v[i] + (1-beta2) * (connection.dweight[i] ** 2)
                 connection.weight[i] += -learning_rate * connection.train_m[i] / (np.sqrt(connection.train_v[i]) + eps)
         return train_connection

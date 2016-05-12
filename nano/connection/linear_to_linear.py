@@ -42,4 +42,4 @@ class FullyConnected(LinearToLinear):
         self.dweight[1][:] = self.after_layer.error
 
         de = np.multiply(self.weight[0], self.after_layer.error)
-        self.before_layer.error[:] = np.sum(de, axis=1).T
+        self.before_layer.error[:] += np.sum(de, axis=1).T
